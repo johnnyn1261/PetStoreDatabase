@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -27,7 +28,7 @@ public class CatalogActivity extends AppCompatActivity {
         setContentView(R.layout.activity_catalog);
 
         // Setup FAB to open EditorActivity
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -52,7 +53,7 @@ public class CatalogActivity extends AppCompatActivity {
      */
     private void displayDatabaseInfo() {
         // Create and/or open a database to read from it
-        SQLiteDatabase db = mDbHelper.getReadableDatabase();
+        //SQLiteDatabase db = mDbHelper.getReadableDatabase();
 
         // Projection = columns (select SQL command)
         String[] projection = {
@@ -62,14 +63,16 @@ public class CatalogActivity extends AppCompatActivity {
                 PetEntry.COLUMN_PET_GENDER,
                 PetEntry.COLUMN_PET_WEIGHT };
 
-        Cursor cursor = db.query(
+        /* Cursor cursor = db.query(
                 PetEntry.TABLE_NAME, // The table to query
                 projection, // The columns to return
                 null, // The columns for the WHERE clause
                 null, // The values for the WHERE clause
                 null, // Don't group the rows
                 null, // Don't filter by row groups
-                null); // The sort order
+                null); // The sort order */
+
+        Cursor cursor = getContentResolver().query(PetEntry.CONTENT_URI, projection, null, null, null);
 
         TextView displayView = (TextView) findViewById(R.id.text_view_pet);
 
@@ -110,8 +113,8 @@ public class CatalogActivity extends AppCompatActivity {
 
     // Insert hardcoded pet data into the database for debugging purposes only
     private void insertPet() {
-        // Put database in write mode
-        SQLiteDatabase db = mDbHelper.getWritableDatabase();
+        // Put database in write mode *database should not be accessed directly*
+        //SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
         ContentValues values = new ContentValues();
         values.put(PetEntry.COLUMN_PET_NAME, "Toto");
@@ -119,9 +122,10 @@ public class CatalogActivity extends AppCompatActivity {
         values.put(PetEntry.COLUMN_PET_GENDER, PetEntry.GENDER_MALE);
         values.put(PetEntry.COLUMN_PET_WEIGHT, 7);
 
-        // Returns -1 if error
-        long newRowId = db.insert(PetEntry.TABLE_NAME, null, values);
-        Log.i(LOG_TAG, "insertPet: added row = " + newRowId);
+        // Returns -1 if error *access database directly*
+        //long newRowId = db.insert(PetEntry.TABLE_NAME, null, values);
+
+        Uri newUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
     }
 
     @Override
