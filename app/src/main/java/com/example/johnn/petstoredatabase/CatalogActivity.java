@@ -12,7 +12,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.TextView;
+import android.widget.ListView;
 
 import com.example.johnn.petstoredatabase.data.PetContract.PetEntry;
 import com.example.johnn.petstoredatabase.data.PetDbHelper;
@@ -74,7 +74,12 @@ public class CatalogActivity extends AppCompatActivity {
 
         Cursor cursor = getContentResolver().query(PetEntry.CONTENT_URI, projection, null, null, null);
 
-        TextView displayView = (TextView) findViewById(R.id.text_view_pet);
+        ListView petListView = findViewById(R.id.list);
+
+        PetCursorAdapter adapter = new PetCursorAdapter(this, cursor);
+        petListView.setAdapter(adapter);
+
+        /* TextView displayView = (TextView) findViewById(R.id.text_view_pet);
 
         try {
             displayView.setText("The pets table contains " + cursor.getCount() + " pets.\n\n");
@@ -108,7 +113,7 @@ public class CatalogActivity extends AppCompatActivity {
         } finally {
             // Cursor must always be closed
             cursor.close();
-        }
+        }*/
     }
 
     // Insert hardcoded pet data into the database for debugging purposes only
