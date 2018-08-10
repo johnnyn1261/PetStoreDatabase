@@ -38,7 +38,12 @@ public class CatalogActivity extends AppCompatActivity {
         });
 
         // Instantiate subclass of SQLiteOpenHelper to access database
-        mDbHelper = new PetDbHelper(this);
+        //mDbHelper = new PetDbHelper(this);
+
+        // Find and set empty view on the ListView, so that it only shows when the list has 0 items
+        ListView petListView = findViewById(R.id.list);
+        View emptyView = findViewById(R.id.empty_view);
+        petListView.setEmptyView(emptyView);
     }
 
     @Override
