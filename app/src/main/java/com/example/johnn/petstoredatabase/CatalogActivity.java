@@ -1,7 +1,9 @@
 package com.example.johnn.petstoredatabase;
 
+import android.app.AlertDialog;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -10,6 +12,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -24,7 +27,7 @@ import com.example.johnn.petstoredatabase.data.PetDbHelper;
 
 public class CatalogActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
-    public static final String LOG_TAG = CatalogActivity.class.getName();
+    public static final String TAG = CatalogActivity.class.getName();
 
     PetCursorAdapter mCursorAdapter;
 
@@ -69,7 +72,7 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
     }
 
     // Insert hardcoded pet data into the database for debugging purposes only
-    private void insertPet() {
+    private void insertDummyPet() {
         // Put database in write mode *database should not be accessed directly*
         //SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
@@ -85,6 +88,32 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
         Uri newUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
     }
 
+    private void deleteAllPets() {
+        int rowsDeleted = getContentResolver().delete(PetEntry.CONTENT_URI, null, null);
+        Log.v(TAG, rowsDeleted + " rows deleted from pet database");
+    }
+
+    private void showDeleteConfirmationDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Delete all pets?");
+        builder.setPositiveButton(R.string.delete, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                deleteAllPets();
+            }
+        });
+
+        builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                if (dialog != null) {
+                    dialog.dismiss();
+                }
+            }
+        });
+
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu options from the res/menu/menu_catalog.xml file and adds menu items to the app bar
@@ -97,10 +126,10 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
         // Overflow menu
         switch (item.getItemId()) {
             case R.id.action_insert_dummy_data:
-                insertPet();
+                insertDummyPet();
                 return true;
             case R.id.action_delete_all_entries:
-                // Do nothing for now
+                showDeleteConfirmationDialog();
                 return true;
         }
         return super.onOptionsItemSelected(item);
