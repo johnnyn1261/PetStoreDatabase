@@ -1,14 +1,24 @@
 package com.example.johnn.petstoredatabase;
 
+import android.app.AlertDialog;
 import android.content.ContentValues;
-import android.database.sqlite.SQLiteDatabase;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.app.LoaderManager;
+import android.content.CursorLoader;
+import android.content.Loader;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -17,14 +27,19 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.johnn.petstoredatabase.data.PetContract.PetEntry;
-import com.example.johnn.petstoredatabase.data.PetDbHelper;
 
-public class EditorActivity extends AppCompatActivity {
+public class EditorActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
+
+    private final String TAG = EditorActivity.class.getName();
 
     private EditText mNameEditText;
     private EditText mBreedEditText;
     private EditText mWeightEditText;
     private Spinner mGenderSpinner;
+
+    private boolean mPetHasChanged = false;
+
+    private Uri mCurrentPetUri;
 
     private int mGender = PetEntry.GENDER_UNKNOWN;
 
@@ -33,15 +48,55 @@ public class EditorActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_editor);
 
+        // Get the intent (may hold pet content Uri) that was used to launch the activity
+        Intent intent = getIntent();
+        mCurrentPetUri = intent.getData();
+
+        if (mCurrentPetUri == null) {
+            setTitle(R.string.editor_activity_title_new_pet);
+        } else {
+            setTitle(R.string.editor_activity_title_edit_pet);
+            getLoaderManager().initLoader(0, null, this);
+        }
+
         // Find all relevant views that we will need to read user input from
         mNameEditText = findViewById(R.id.edit_pet_name);
         mBreedEditText = findViewById(R.id.edit_pet_breed);
         mWeightEditText = findViewById(R.id.edit_pet_weight);
         mGenderSpinner = findViewById(R.id.spinner_gender);
 
+        mNameEditText.setOnTouchListener(mTouchListener);
+        mBreedEditText.setOnTouchListener(mTouchListener);
+        mWeightEditText.setOnTouchListener(mTouchListener);
+        mGenderSpinner.setOnTouchListener(mTouchListener);
+
         setupSpinner();
     }
 
+    private View.OnTouchListener mTouchListener = new View.OnTouchListener() {
+        @Override
+        public boolean onTouch(View view, MotionEvent motionEvent) {
+            mPetHasChanged = true;
+            return false;
+        }
+    };
+
+    private void showUnsavedChangesDialog(DialogInterface.OnClickListener discardButtonClickListener) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(R.string.unsaved_changes_dialog_msg);
+        builder.setPositiveButton(R.string.discard, discardButtonClickListener);
+        builder.setNegativeButton(R.string.keep_editing, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                if (dialogInterface != null) {
+                    dialogInterface.dismiss();
+                }
+            }
+        });
+
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
 
     private void setupSpinner() {
         // Create adapter for spinner
@@ -70,7 +125,6 @@ public class EditorActivity extends AppCompatActivity {
                 }
             }
 
-            // Because AdapterView is an abstract class, onNothingSelected must be defined
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
                 mGender = PetEntry.GENDER_UNKNOWN;
@@ -78,38 +132,45 @@ public class EditorActivity extends AppCompatActivity {
         });
     }
 
-    private void insertPet() {
+    private void savePet() {
         // Trim eliminates leading or trailing white space
         String nameString = mNameEditText.getText().toString().trim();
         String breedString = mBreedEditText.getText().toString().trim();
         String weightString = mWeightEditText.getText().toString().trim();
-        int weight = Integer.parseInt(weightString);
 
-        // Create database helper
-        //PetDbHelper mDbHelper = new PetDbHelper(this);
-        //SQLiteDatabase db = mDbHelper.getWritableDatabase();
+        if (mCurrentPetUri == null && TextUtils.isEmpty(nameString) && TextUtils.isEmpty(breedString) &&  TextUtils.isEmpty(weightString) && mGender == PetEntry.GENDER_UNKNOWN) {
+            return;
+        }
 
         ContentValues values = new ContentValues();
         values.put(PetEntry.COLUMN_PET_NAME, nameString);
         values.put(PetEntry.COLUMN_PET_BREED, breedString);
         values.put(PetEntry.COLUMN_PET_GENDER, mGender);
-        values.put(PetEntry.COLUMN_PET_WEIGHT, weight);
 
-        Uri newUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
-
-        if (newUri == null) {
-            Toast.makeText(this, "insertion failed", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "test", Toast.LENGTH_SHORT).show();
+        int weight = 0;
+        if (!TextUtils.isEmpty(weightString)) {
+            weight = Integer.parseInt(weightString);
         }
 
-        /* long newRowId = db.insert(PetEntry.TABLE_NAME, null, values);
+        values.put(PetEntry.COLUMN_PET_WEIGHT, weight);
 
-        if (newRowId == -1) {
-            Toast.makeText(this, "Error with saving pet", Toast.LENGTH_SHORT).show();
+        if (mCurrentPetUri == null) {
+            Uri newUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
+
+            if (newUri == null) {
+                Toast.makeText(this, "insertion failed", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "added new pet", Toast.LENGTH_SHORT).show();
+            }
         } else {
-            Toast.makeText(this, "Pet saved with row id: " + newRowId, Toast.LENGTH_SHORT).show();
-        } */
+            int rowsAffected = getContentResolver().update(mCurrentPetUri, values, null, null);
+
+            if (rowsAffected == 0) {
+                Toast.makeText(this, "Error: could not update pet", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Pet updated", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     @Override
@@ -124,7 +185,7 @@ public class EditorActivity extends AppCompatActivity {
         // User clicked on a menu option in the app bar overflow menu
         switch (item.getItemId()) {
             case R.id.action_save:
-                insertPet();
+                savePet();
                 finish();
                 return true;
             case R.id.action_delete:
@@ -132,10 +193,91 @@ public class EditorActivity extends AppCompatActivity {
                 return true;
             // Respond to a click on the "Up" arrow button in the app bar
             case android.R.id.home:
-                // Navigate back to parent activity (CatalogActivity)
-                NavUtils.navigateUpFromSameTask(this);
+                if (!mPetHasChanged) {
+                    NavUtils.navigateUpFromSameTask(EditorActivity.this);
+                }
+
+                DialogInterface.OnClickListener discardButtonClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        NavUtils.navigateUpFromSameTask(EditorActivity.this);
+                    }
+                };
+
+                showUnsavedChangesDialog(discardButtonClickListener);
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int i, @Nullable Bundle bundle) {
+        String[] projection = {
+                PetEntry._ID,
+                PetEntry.COLUMN_PET_NAME,
+                PetEntry.COLUMN_PET_BREED,
+                PetEntry.COLUMN_PET_GENDER,
+                PetEntry.COLUMN_PET_WEIGHT };
+
+        return new CursorLoader(this, mCurrentPetUri, projection, null, null, null);
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor cursor) {
+        if (cursor.moveToFirst()) {
+            int nameColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_NAME);
+            int breedColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_BREED);
+            int genderColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_GENDER);
+            int weightColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_WEIGHT);
+
+            String name = cursor.getString(nameColumnIndex);
+            String breed = cursor.getString(breedColumnIndex);
+            int gender = cursor.getInt(genderColumnIndex);
+            int weight = cursor.getInt(weightColumnIndex);
+
+            mNameEditText.setText(name);
+            mBreedEditText.setText(breed);
+            mWeightEditText.setText(Integer.toString(weight));
+
+            switch (gender) {
+                case PetEntry.GENDER_MALE:
+                    mGenderSpinner.setSelection(1);
+                    break;
+                case PetEntry.GENDER_FEMALE:
+                    mGenderSpinner.setSelection(2);
+                    break;
+                default:
+                    mGenderSpinner.setSelection(0);
+                    break;
+            }
+        }
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<Cursor> loader) {
+        mNameEditText.setText("");
+        mBreedEditText.setText("");
+        mWeightEditText.setText("");
+        mGenderSpinner.setSelection(0);
+    }
+
+    @Override
+    public void onBackPressed() {
+        Log.i(TAG, "Back button pressed");
+
+        if (!mPetHasChanged) {
+            super.onBackPressed();
+            return;
+        }
+
+        DialogInterface.OnClickListener discardButtonClickListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                Log.i(TAG,"Finishing current activity");
+                finish();
+            }
+        };
+
+        showUnsavedChangesDialog(discardButtonClickListener);
     }
 }
