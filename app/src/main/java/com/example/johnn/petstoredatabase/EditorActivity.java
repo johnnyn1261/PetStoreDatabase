@@ -139,6 +139,10 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         String breedString = mBreedEditText.getText().toString().trim();
         String weightString = mWeightEditText.getText().toString().trim();
 
+        if (nameString.matches("")) {
+            return;
+        }
+
         if (mCurrentPetUri == null && TextUtils.isEmpty(nameString) && TextUtils.isEmpty(breedString) &&  TextUtils.isEmpty(weightString) && mGender == PetEntry.GENDER_UNKNOWN) {
             return;
         }
@@ -187,6 +191,11 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         switch (item.getItemId()) {
             case R.id.action_save:
                 savePet();
+                String required = mNameEditText.getText().toString();
+                if (required.matches("")) {
+                    Toast.makeText(this, "Pet name is required", Toast.LENGTH_SHORT).show();
+                    break;
+                }
                 finish();
                 return true;
             case R.id.action_delete:

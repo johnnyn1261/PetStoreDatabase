@@ -72,15 +72,15 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
     }
 
     // Insert hardcoded pet data into the database for debugging purposes only
-    private void insertDummyPet() {
+    private void insertSamplePet() {
         // Put database in write mode *database should not be accessed directly*
         //SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
         ContentValues values = new ContentValues();
-        values.put(PetEntry.COLUMN_PET_NAME, "Toto");
-        values.put(PetEntry.COLUMN_PET_BREED, "Terrier");
+        values.put(PetEntry.COLUMN_PET_NAME, "Tom");
+        values.put(PetEntry.COLUMN_PET_BREED, "Tom Cat");
         values.put(PetEntry.COLUMN_PET_GENDER, PetEntry.GENDER_MALE);
-        values.put(PetEntry.COLUMN_PET_WEIGHT, 7);
+        values.put(PetEntry.COLUMN_PET_WEIGHT, 10);
 
         // Returns -1 if error *access database directly*
         //long newRowId = db.insert(PetEntry.TABLE_NAME, null, values);
@@ -126,7 +126,7 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
         // Overflow menu
         switch (item.getItemId()) {
             case R.id.action_insert_dummy_data:
-                insertDummyPet();
+                insertSamplePet();
                 return true;
             case R.id.action_delete_all_entries:
                 showDeleteConfirmationDialog();
